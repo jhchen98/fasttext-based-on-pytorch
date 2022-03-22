@@ -8,7 +8,7 @@ from data_process import build_dataset, build_iterator, get_time_dif
 
 
 if __name__ == '__main__':
-    dataset = 'Data'  # 数据集
+    dataset = 'data'  # 数据集
     embedding = 'random'
     x = import_module('models.FastText')
     config = x.Config(dataset, embedding)      # 加载神经网络模型的参数
