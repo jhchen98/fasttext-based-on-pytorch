@@ -10,7 +10,7 @@ from utils import get_time_dif
 
 def train(config, model, train_iter, dev_iter, test_iter):
     start_time = time.time()
-    model.train()
+    model.train()  # model.train()将启用BatchNormalization和Dropout，相应的，model.eval()则不启用BatchNormalization和Dropout
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     # 学习率指数衰减，每次epoch：学习率 = gamma * 学习率
@@ -30,11 +30,11 @@ def train(config, model, train_iter, dev_iter, test_iter):
             optimizer.step()
             if total_batch % 100 == 0:
                 # 每多少轮输出在训练集和验证集上的效果
-                true = labels.data.cpu()
-                predic = torch.max(outputs.data, 1)[1].cpu()
-                train_acc = metrics.accuracy_score(true, predic)
-                dev_acc, dev_loss = evaluate(config, model, dev_iter)
-                if dev_loss < dev_best_loss:
+                true = labels.data.cpu()                                 # 从cpu tensor中取出标签数据
+                predic = torch.max(outputs.data, 1)[1].cpu()             # 返回每一行中最大值的列索引
+                train_acc = metrics.accuracy_score(true, predic)         # 计算这个batch的分类准确率
+                dev_acc, dev_loss = evaluate(config, model, dev_iter)    # 计算验证集上的准确率和训练误差
+                if dev_loss < dev_best_loss:                             # 使用验证集判断模型性能是否提升
                     dev_best_loss = dev_loss
                     torch.save(model.state_dict(), config.save_path)
                     improve = '*'
@@ -73,23 +73,23 @@ def test(config, model, test_iter):
 
 
 def evaluate(config, model, data_iter, test=False):
-    model.eval()
+    model.eval()   # 不启用BatchNormalization和Dropout
     loss_total = 0
     predict_all = np.array([], dtype=int)
     labels_all = np.array([], dtype=int)
-    with torch.no_grad():
+    with torch.no_grad():         # 不追踪梯度
         for texts, labels in data_iter:
-            outputs = model(texts)
-            loss = F.cross_entropy(outputs, labels)
+            outputs = model(texts)                                 # 使用模型进行预测
+            loss = F.cross_entropy(outputs, labels)                # 计算模型损失
             loss_total += loss
             labels = labels.data.cpu().numpy()
             predic = torch.max(outputs.data, 1)[1].cpu().numpy()
             labels_all = np.append(labels_all, labels)
             predict_all = np.append(predict_all, predic)
 
-    acc = metrics.accuracy_score(labels_all, predict_all)
+    acc = metrics.accuracy_score(labels_all, predict_all)          # 计算分类误差
     if test:
         report = metrics.classification_report(labels_all, predict_all, target_names=config.class_list, digits=4)
         confusion = metrics.confusion_matrix(labels_all, predict_all)
         return acc, loss_total / len(data_iter), report, confusion
-    return acc, loss_total / len(data_iter)
+    return acc, loss_total / len(data_iter)                        # 返回分类误差和平均模型损失
